@@ -1,0 +1,30 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: emr-eks-compute-cost-exporter
+  namespace: emr-eks-cost-tracking
+spec:
+  schedule: "5 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: emr-eks-cost-tracking-sa
+          restartPolicy: OnFailure
+          automountServiceAccountToken: false
+          containers:
+          - name: emr-eks-cost-exporter
+            image: ECR_IMAGE
+            imagePullPolicy: Always
+            securityContext:
+              allowPrivilegeEscalation: false
+            env:
+            - name: S3_BUCKET_NAME
+              value: CUR_BUCKET
+            - name: KUBECOST_API_ENDPOINT
+              value: http://kubecost-cost-analyzer.kubecost:9090
+            - name: S3_PREFIX
+              value: compute_cost
