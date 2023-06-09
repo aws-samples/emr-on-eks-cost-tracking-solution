@@ -206,7 +206,7 @@ Resources:
             Effect: Allow
             Resource:
               - !Ref kubecostAmp
-            Sid: Allow read write access to amp
+            Sid: AllowReadWriteToAmp
         Version: "2012-10-17"
       Description: Policy use by kubecost to read write to amp 
       ManagedPolicyName: kubecost-amp-policy
