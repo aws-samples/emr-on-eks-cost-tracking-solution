@@ -1,6 +1,6 @@
 # Emr Eks Cost Tracking
 
-This repository contains a series of automation to help in the deployment of a cost tracking solution for EMR on EKS.
+This repository contains a series of automation to help in the deployment of a cost tracking solution for EMR on EKS. The implementation details of the repository are covered in this [blog](https://aws.amazon.com/blogs/big-data/cost-monitoring-for-amazon-emr-on-amazon-eks/).
 
 ## Deploy
 
