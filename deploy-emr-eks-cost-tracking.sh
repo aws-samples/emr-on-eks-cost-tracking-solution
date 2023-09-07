@@ -55,7 +55,7 @@ aws ec2 create-spot-datafeed-subscription \
     --region $1
 
 #Get Amazon managed prometheus workspace id to be used in Helm values config
-workspace_id=$(aws cloudformation --region eu-west-1 describe-stacks --stack-name $CFN_STACK_NAME --query "Stacks[0].Outputs[0].OutputValue")
+workspace_id=$(aws cloudformation --region $1 describe-stacks --stack-name $CFN_STACK_NAME --query "Stacks[0].Outputs[0].OutputValue")
 
 #remove the double quotes from string
 workspace_id=`sed -e 's/^"//' -e 's/"$//' <<<"$workspace_id"`
