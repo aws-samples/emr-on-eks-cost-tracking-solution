@@ -121,7 +121,7 @@ eksctl create iamserviceaccount \
     --name kubecost-prometheus-server \
     --namespace kubecost \
     --cluster $3 --region $1 \
-    --attach-policy-arn arn:aws:iam::$4:policy/kubecost-policy \
+    --attach-policy-arn arn:aws:iam::$4:policy/kubecost-amp-policy \
     --override-existing-serviceaccounts \
     --approve
 
