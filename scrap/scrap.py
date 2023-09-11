@@ -180,8 +180,12 @@ def clean_allocation_data_operator(kubecost_allocation_data):
 
     print(df.columns)
 
-    df['job_type'] = df['properties.labels.emr_containers_amazonaws_com_resource_type'].apply(
-                        lambda x: 'spark_operator' if x.lower() == 'spark.operator' else 'spark_submit')
+    if 'properties.labels.emr_containers_amazonaws_com_resource_type' in df.columns:
+        # Check if all values in the column are 'spark.operator'
+        df.loc[df['properties.labels.emr_containers_amazonaws_com_resource_type'] == 'spark.operator', 'submission_type'] = 'spark_operator'
+        
+    else:
+        df['submission_type'] = 'spark_submit'
 
     df = df.rename(columns={'properties.providerID': 'instance_id'})
 
