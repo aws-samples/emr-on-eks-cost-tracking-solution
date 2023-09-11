@@ -11,15 +11,17 @@ import boto3
 import os
 import logging
 
-s3_bucket_name = os.environ["S3_BUCKET_NAME"]
-s3_prefix = os.environ["S3_PREFIX"]
-kube_cost_endpoint = os.environ["KUBECOST_API_ENDPOINT"]
+# s3_bucket_name = os.environ["S3_BUCKET_NAME"]
+# s3_prefix = os.environ["S3_PREFIX"]
+# kube_cost_endpoint = os.environ["KUBECOST_API_ENDPOINT"]
+
+kube_cost_endpoint = "http://localhost:9090"
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 
-logger.info(s3_bucket_name)
-logger.info(s3_prefix)
+# logger.info(s3_bucket_name)
+# logger.info(s3_prefix)
 logger.info(kube_cost_endpoint)
 
 def export_to_s3(file_name):
@@ -102,6 +104,84 @@ def clean_allocation_data(kubecost_allocation_data):
     df = pd.json_normalize(df)
     
     df[['pod_name', 'job_id', 'vc_id']] = df['name'].str.split('/', expand=True)
+
+    df = df.rename(columns={'properties.providerID': 'instance_id'})
+
+    df = df.drop(columns=['name'])
+
+    return df
+
+def execute_kubecost_allocation_api_operator(kubecost_api_endpoint, start, end, granularity):
+
+    """Executes Kubecost Allocation API on a a 1h window, example 08:00 to 09:00
+
+    :param kubecost_api_endpoint: the Kubecost API endpoint, in format of "http://<service>.<namespace>:<port>"
+    :param start: the start time for calculating Kubecost Allocation API window
+    :param end: the end time for calculating Kubecost Allocation API window
+    :param granularity: the user input time granularity, to use for calculating the step (daily or hourly)
+    :return: the Kubecost Allocation API query "data" list
+    """
+
+    window = f'{start.strftime("%Y-%m-%dT%H:%M:%SZ")},{end.strftime("%Y-%m-%dT%H:%M:%SZ")}'
+
+    logger.info(window)
+
+    #The aggregate is used to query Kubecost only on EMR on EKS related data
+    #It uses labels that are for Virtual Cluster Id and Job Id
+    aggregate = "pod,label:eks-subscription.amazonaws.com/emr.internal.id"
+
+    step = granularity
+
+    accumulate=False
+
+    #Query Kubecost API
+    try:       
+        params = {"window": window, "aggregate": aggregate, "accumulate": accumulate, "step": step}
+
+        r = requests.get(f"{kubecost_api_endpoint}/model/allocation", params=params, timeout=30)
+
+        if not list(filter(None, r.json()["data"])):
+            logger.info("No data found")
+            sys.exit()
+
+        return r.json()["data"]
+    
+    except requests.exceptions.ConnectionError as error:
+        logger.error(f"Error connecting to Kubecost Allocation API: {error}")
+        sys.exit(1)
+
+def clean_allocation_data_operator(kubecost_allocation_data):
+
+    #List all the keys from the data object return by kubecost
+    #Keys contain a pair defined by job_id and virtual_cluster_id
+    list_keys = list(set(chain.from_iterable(sub.keys() for sub in kubecost_allocation_data)))
+
+    list_keys = [item for item in list_keys if '__unallocated__' not in item and '__idle__' not in item]
+
+    #convert dict to panda dataframe
+    if list_keys:
+        df = pd.DataFrame.from_records(kubecost_allocation_data)
+    else:
+        logger.info('No EMR on EKS data found, exiting')
+        sys.exit()
+
+    logger.info(f'List of job/vc tuple {list_keys}')
+
+    #Transforming columns in the dataframe to new list of df 
+    all_dfs = [df[key] for key in list_keys]
+
+    #Transforming list to rows in a single df
+    df = pd.concat(all_dfs)
+
+    #Flatten the json
+    df = pd.json_normalize(df)
+    
+    df[['pod_name', 'emr_eks_subscription_id']] = df['name'].str.split('/', expand=True)
+
+    print(df.columns)
+
+    df['job_type'] = df['properties.labels.emr_containers_amazonaws_com_resource_type'].apply(
+                        lambda x: 'spark_operator' if x.lower() == 'spark.operator' else 'spark_submit')
 
     df = df.rename(columns={'properties.providerID': 'instance_id'})
 
@@ -226,22 +306,34 @@ def main():
                                                                start,
                                                                 end, 
                                                                 "1h")
+    
+    kubecost_allocation_data_operator = execute_kubecost_allocation_api_operator(kube_cost_endpoint, 
+                                                               start,
+                                                                end, 
+                                                                "1h")
 
     #clean the data and get only columns needed
-    cleaned_allocation_data = clean_allocation_data(kubecost_allocation_data)
-    cleaned_allocation_data = cleaned_allocation_data.rename(columns={'properties.providerID': 'instance_id'})
+    # cleaned_allocation_data = clean_allocation_data(kubecost_allocation_data)
+    # cleaned_allocation_data = cleaned_allocation_data.rename(columns={'properties.providerID': 'instance_id'})
+
+    cleaned_allocation_data_operator = clean_allocation_data_operator(kubecost_allocation_data_operator)
+    cleaned_allocation_data_operator = cleaned_allocation_data_operator.rename(columns={'properties.providerID': 'instance_id'})
     
     # #Join the two df on instance_id
-    df = cleaned_allocation_data.join(cleaned_asset_data.set_index('instance_id'), on='instance_id', validate='m:1')
+    # df = cleaned_allocation_data.join(cleaned_asset_data.set_index('instance_id'), on='instance_id', validate='m:1')
+
+    df1 = cleaned_allocation_data_operator.join(cleaned_asset_data.set_index('instance_id'), on='instance_id', validate='m:1')
 
     #generate filename
     file_name = uuid.uuid1()
 
     #write to local file
-    df.to_csv(f"{file_name}.csv", index=False)
+    df1.to_csv(f"{uuid.uuid1()}.csv", index=False)
+
+    # df.to_csv(f"{file_name}.csv", index=False)
     
     #upload to S3
-    export_to_s3(file_name=f"{file_name}.csv")
+    #export_to_s3(file_name=f"{file_name}.csv")
 
 if __name__ == "__main__":
     main()
