@@ -5,6 +5,7 @@ import sys
 import requests
 import datetime
 import pandas as pd
+import numpy as np
 from itertools import chain
 import uuid
 import boto3
@@ -105,6 +106,8 @@ def clean_allocation_data(kubecost_allocation_data):
     
     df[['pod_name', 'job_id', 'vc_id']] = df['name'].str.split('/', expand=True)
 
+    df['submission_type'] = 'start_job_run'
+
     df = df.rename(columns={'properties.providerID': 'instance_id'})
 
     df = df.drop(columns=['name'])
@@ -186,6 +189,15 @@ def clean_allocation_data_operator(kubecost_allocation_data):
         
     else:
         df['submission_type'] = 'spark_submit'
+
+    #if the operator is running without any job, 
+    # we want to make sure to create the spark version column
+    # as it is not present in the operator as a label
+    if 'properties.labels.spark_version' not in df.columns:
+        df['spark_version'] = np.NaN
+
+    if 'properties.labels.spark_version' in df.columns:
+        df['spark_version'] = df['properties.labels.spark_version']
 
     df = df.rename(columns={'properties.providerID': 'instance_id'})
 
