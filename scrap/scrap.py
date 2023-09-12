@@ -52,21 +52,19 @@ desired_columns = [
     "ramByteRequestAverage", "ramByteUsageAverage", "ramByteHours", "ramCost",
     "ramCostAdjustment", "ramEfficiency", "externalCost", "sharedCost",
     "totalCost", "totalEfficiency", "properties.cluster",
-    "properties.container", "properties.namespace", "properties.pod",
+    "properties.container", "properties.namespace",
     "instance_id", "properties.labels.emr_containers_amazonaws_com_component",
-    "properties.labels.node_kubernetes_io_instance_type",
-    "rawAllocationOnly.cpuCoreUsageMax", "rawAllocationOnly.ramByteUsageMax",
     "emr_eks_subscription_id", "properties.labels.spark_role",
-    "submission_type", "spark_version", "capacity_type", "pod_name"
+    "submission_type", "spark_version", "capacity_type", "pod_name", "job_id", "vc_id"
 ]
 
 
 def main():
 
     #Define time interval
-    start = datetime.datetime.now() - datetime.timedelta(hours=1)
+    start = datetime.datetime.now() - datetime.timedelta(hours=3)
     start = start.replace(microsecond=0, second=0, minute=0)
-    end = datetime.datetime.now() - datetime.timedelta(hours=0)
+    end = datetime.datetime.now() - datetime.timedelta(hours=2)
     end = end.replace(microsecond=0, second=0, minute=0)
 
     # #get asset data, these are ec2 instances
@@ -97,48 +95,38 @@ def main():
     if kubecost_allocation_data_operator is None and kubecost_allocation_data is None:
         sys.exit()
 
-
     cleaned_allocation_data = data_clean.clean_allocation_data(kubecost_allocation_data, logger=logger)
-
-    print(cleaned_allocation_data)
-
-    if cleaned_allocation_data is not None:
-        #clean the data and get only columns needed
-        cleaned_allocation_data = cleaned_allocation_data.rename(columns={'properties.providerID': 'instance_id'})
 
     cleaned_allocation_data_operator = data_clean.clean_allocation_data_operator(kubecost_allocation_data_operator, logger=logger)
 
-    if cleaned_allocation_data_operator is not None:
-
-        cleaned_allocation_data_operator = cleaned_allocation_data_operator.rename(columns={'properties.providerID': 'instance_id'})
-    
     if kubecost_allocation_data_operator is None and cleaned_allocation_data_operator is None:
         logger.info('No EMR on EKS data found, exiting')
         sys.exit()
 
     cost_df = pd.DataFrame(columns=desired_columns)
 
-
     # #Join the two df on instance_id
     if (cleaned_allocation_data is not None):
 
-        df_job_api_method = cleaned_allocation_data.join(cleaned_asset_data.set_index('instance_id'), on='instance_id', validate='m:1')
+        df_job_api_method = cleaned_allocation_data.join(cleaned_asset_data.set_index('instance_id'), on='instance_id', validate='m:1')     
+        df_job_api_method['emr_eks_subscription_id'] = np.NaN 
         cost_df = pd.concat([cost_df, df_job_api_method[desired_columns]], ignore_index=True)
 
     if (cleaned_allocation_data_operator is not None):
 
         df_job_other_methods = cleaned_allocation_data_operator.join(cleaned_asset_data.set_index('instance_id'), on='instance_id', validate='m:1')
+        df_job_other_methods[['job_id', 'vc_id']] = np.NaN
+
         cost_df = pd.concat([cost_df, df_job_other_methods[desired_columns]], ignore_index=True)
 
     
+
 
     #generate filename
     file_name = uuid.uuid1()
 
     #write to local file
-    cost_df.to_csv(f"{uuid.uuid1()}.csv", index=False)
-
-    # df.to_csv(f"{file_name}.csv", index=False)
+    cost_df.to_csv(f"{file_name}.csv", index=False)
     
     #upload to S3
     #export_to_s3(file_name=f"{file_name}.csv")

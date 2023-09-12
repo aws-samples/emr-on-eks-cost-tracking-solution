@@ -2,6 +2,12 @@ import pandas as pd
 import numpy as np
 from itertools import chain
 import sys
+import json
+import os
+
+required_columns = ['properties.container', 'properties.labels.emr_containers_amazonaws_com_component',
+                    'properties.labels.node_kubernetes_io_instance_type', 'properties.labels.spark_role',
+                    'spark_version']
 
 def clean_allocation_data(kubecost_allocation_data, logger):
 
@@ -34,7 +40,15 @@ def clean_allocation_data(kubecost_allocation_data, logger):
 
     df = df.rename(columns={'properties.providerID': 'instance_id'})
 
+    df = df.rename(columns={'properties.labels.eks_subscription_amazonaws_com_emr_internal_id': 'emr_eks_subscription_id'})
+    
     df = df.drop(columns=['name'])
+
+    missing_columns = [col for col in required_columns if col not in df.columns]
+
+    if missing_columns:
+        for col in missing_columns:
+            df[col] = None  # You can use any default value you prefer instead of None
 
     return df
 
@@ -52,8 +66,6 @@ def clean_allocation_data_operator(kubecost_allocation_data, logger):
     else:
         return None
 
-    logger.info(f'List of job/vc tuple {list_keys}')
-
     #Transforming columns in the dataframe to new list of df 
     all_dfs = [df[key] for key in list_keys]
 
@@ -62,14 +74,14 @@ def clean_allocation_data_operator(kubecost_allocation_data, logger):
 
     #Flatten the json
     df = pd.json_normalize(df)
-    
+    df = df.drop(columns=['properties.labels.node_kubernetes_io_instance_type'])
+
     df[['pod_name', 'emr_eks_subscription_id']] = df['name'].str.split('/', expand=True)
 
-    print(df.columns)
-
     if 'properties.labels.emr_containers_amazonaws_com_resource_type' in df.columns:
-        # Check if all values in the column are 'spark.operator'
+        # Check if values in the column are 'spark.operator'
         df.loc[df['properties.labels.emr_containers_amazonaws_com_resource_type'] == 'spark.operator', 'submission_type'] = 'spark_operator'
+        df.dropna(subset=['properties.labels.emr_containers_amazonaws_com_resource_type'], inplace=True)
         
     else:
         df['submission_type'] = 'spark_submit'
@@ -144,7 +156,9 @@ def clean_asset_data (asset_data):
         df = pd.concat([df_karpenter, df_mng])
 
     #select only two columns that are of interest
-    df = df[['properties.providerID','capacity_type']]
+    df = df[['properties.providerID','capacity_type', 'nodeType']]
+
+    df = df.rename(columns={'nodeType': 'instace_type'})
 
     #unify how spot and on-demand are written, this is due to differences
     #between karpenter and managed nodegroup
