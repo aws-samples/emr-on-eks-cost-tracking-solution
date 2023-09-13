@@ -21,6 +21,6 @@ COPY --chown=worker:worker ./scrap/requirements.txt .
 
 RUN pip3 install --user -r requirements.txt
 
-COPY --chown=worker:worker ./scrap/scrap.py .
+COPY --chown=worker:worker ./scrap/ .
 
 CMD ["python3", "scrap.py"]

@@ -15,12 +15,14 @@ spec:
           serviceAccountName: emr-eks-cost-tracking-sa
           restartPolicy: OnFailure
           automountServiceAccountToken: false
+          securityContext:
+            runAsUser: 10001
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
           containers:
           - name: emr-eks-cost-exporter
             image: ECR_IMAGE
             imagePullPolicy: Always
-            securityContext:
-              allowPrivilegeEscalation: false
             env:
             - name: S3_BUCKET_NAME
               value: CUR_BUCKET
