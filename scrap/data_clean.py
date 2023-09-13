@@ -36,8 +36,6 @@ def clean_allocation_data(kubecost_allocation_data, logger):
     
     df[['pod_name', 'job_id', 'vc_id']] = df['name'].str.split('/', expand=True)
 
-    df['submission_type'] = 'start_job_run'
-
     df = df.rename(columns={'properties.providerID': 'instance_id'})
 
     df = df.rename(columns={'properties.labels.eks_subscription_amazonaws_com_emr_internal_id': 'emr_eks_subscription_id'})
@@ -48,7 +46,7 @@ def clean_allocation_data(kubecost_allocation_data, logger):
 
     if missing_columns:
         for col in missing_columns:
-            df[col] = None  # You can use any default value you prefer instead of None
+            df[col] = None
 
     return df
 
@@ -76,15 +74,17 @@ def clean_allocation_data_operator(kubecost_allocation_data, logger):
     df = pd.json_normalize(df)
     df = df.drop(columns=['properties.labels.node_kubernetes_io_instance_type'])
 
-    df[['pod_name', 'emr_eks_subscription_id']] = df['name'].str.split('/', expand=True)
-
-    if 'properties.labels.emr_containers_amazonaws_com_resource_type' in df.columns:
-        # Check if values in the column are 'spark.operator'
-        df.loc[df['properties.labels.emr_containers_amazonaws_com_resource_type'] == 'spark.operator', 'submission_type'] = 'spark_operator'
+    if ('properties.labels.eks_subscription_amazonaws_com_emr_internal_id' in df.columns and 'properties.labels.emr_containers_amazonaws_com_resource_type' not in df.columns):
+        logger.info('Dropping jobs with spark-submit or start job run, emr_internal_id not supported for these modes by the solution')
+        df.dropna(inplace=True)
+        return None
+    elif ('properties.labels.eks_subscription_amazonaws_com_emr_internal_id' in df.columns and 'properties.labels.emr_containers_amazonaws_com_resource_type' in df.columns):
+        logger.info('Dropping jobs with spark-submit or start job run, emr_internal_id not supported for these modes by the solution')
         df.dropna(subset=['properties.labels.emr_containers_amazonaws_com_resource_type'], inplace=True)
-        
     else:
-        df['submission_type'] = 'spark_submit'
+        logger.info('Found spark operator submitted jobs only')
+
+    df[['pod_name', 'emr_eks_subscription_id']] = df['name'].str.split('/', expand=True)
 
     #if the operator is running without any job, 
     # we want to make sure to create the spark version column
@@ -95,6 +95,7 @@ def clean_allocation_data_operator(kubecost_allocation_data, logger):
 
     if 'properties.labels.spark_version' in df.columns:
         df['spark_version'] = df['properties.labels.spark_version']
+
 
     df = df.rename(columns={'properties.providerID': 'instance_id'})
 

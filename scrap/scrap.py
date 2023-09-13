@@ -13,17 +13,15 @@ import logging
 from data_fetch import execute_kubecost_allocation_api, execute_kubecost_assets_api
 import data_clean
 
-# s3_bucket_name = os.environ["S3_BUCKET_NAME"]
-# s3_prefix = os.environ["S3_PREFIX"]
-# kube_cost_endpoint = os.environ["KUBECOST_API_ENDPOINT"]
-
-kube_cost_endpoint = "http://localhost:9090"
+s3_bucket_name = os.environ["S3_BUCKET_NAME"]
+s3_prefix = os.environ["S3_PREFIX"]
+kube_cost_endpoint = os.environ["KUBECOST_API_ENDPOINT"]
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 
-# logger.info(s3_bucket_name)
-# logger.info(s3_prefix)
+logger.info(s3_bucket_name)
+logger.info(s3_prefix)
 logger.info(kube_cost_endpoint)
 
 def export_to_s3(file_name):
@@ -55,16 +53,15 @@ desired_columns = [
     "properties.container", "properties.namespace",
     "instance_id", "properties.labels.emr_containers_amazonaws_com_component",
     "emr_eks_subscription_id", "properties.labels.spark_role",
-    "submission_type", "spark_version", "capacity_type", "pod_name", "job_id", "vc_id"
-]
+    "spark_version", "capacity_type", "pod_name", "job_id", "vc_id"]
 
 
 def main():
 
     #Define time interval
-    start = datetime.datetime.now() - datetime.timedelta(hours=3)
+    start = datetime.datetime.now() - datetime.timedelta(hours=2)
     start = start.replace(microsecond=0, second=0, minute=0)
-    end = datetime.datetime.now() - datetime.timedelta(hours=2)
+    end = datetime.datetime.now() - datetime.timedelta(hours=1)
     end = end.replace(microsecond=0, second=0, minute=0)
 
     # #get asset data, these are ec2 instances
@@ -109,7 +106,7 @@ def main():
     if (cleaned_allocation_data is not None):
 
         df_job_api_method = cleaned_allocation_data.join(cleaned_asset_data.set_index('instance_id'), on='instance_id', validate='m:1')     
-        df_job_api_method['emr_eks_subscription_id'] = np.NaN 
+        df_job_api_method['emr_eks_subscription_id'] = np.NaN
         cost_df = pd.concat([cost_df, df_job_api_method[desired_columns]], ignore_index=True)
 
     if (cleaned_allocation_data_operator is not None):
@@ -129,7 +126,7 @@ def main():
     cost_df.to_csv(f"{file_name}.csv", index=False)
     
     #upload to S3
-    #export_to_s3(file_name=f"{file_name}.csv")
+    export_to_s3(file_name=f"{file_name}.csv")
 
 if __name__ == "__main__":
     main()
