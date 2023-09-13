@@ -2,12 +2,11 @@
 # SPDX-License-Identifier: MIT-0
 
 CREATE EXTERNAL TABLE `compute_cost`(
-  `name` string, 
   `start` string, 
   `end` string, 
-  `minutes` double, 
+  `minutes` bigint, 
   `cpucores` double, 
-  `cpucorerequestaverage` double, 
+  `cpucorerequestaverage` bigint, 
   `cpucoreusageaverage` double, 
   `cpucorehours` double, 
   `cpucost` double, 
@@ -31,11 +30,11 @@ CREATE EXTERNAL TABLE `compute_cost`(
   `pvcost` bigint, 
   `pvs` string, 
   `pvcostadjustment` bigint, 
-  `rambytes` bigint, 
+  `rambytes` double, 
   `rambyterequestaverage` bigint, 
   `rambyteusageaverage` double, 
   `rambytehours` double, 
-  `ramcost` string, 
+  `ramcost` double, 
   `ramcostadjustment` bigint, 
   `ramefficiency` double, 
   `externalcost` bigint, 
@@ -43,34 +42,17 @@ CREATE EXTERNAL TABLE `compute_cost`(
   `totalcost` double, 
   `totalefficiency` double, 
   `properties.cluster` string, 
-  `properties.node` string, 
   `properties.container` string, 
   `properties.namespace` string, 
-  `properties.pod` string, 
-  `properties.providerid` string, 
+  `instance_id` string, 
   `properties.labels.emr_containers_amazonaws_com_component` string, 
-  `properties.labels.emr_containers_amazonaws_com_job_id` string, 
-  `properties.labels.emr_containers_amazonaws_com_resource_type` string, 
-  `properties.labels.emr_containers_amazonaws_com_virtual_cluster_id` string, 
-  `properties.labels.kubernetes_io_metadata_name` string, 
-  `properties.labels.node_kubernetes_io_instance_type` string, 
-  `properties.labels.spark_app_name` string, 
-  `properties.labels.spark_app_selector` string, 
-  `properties.labels.spark_driver_pod_name` string, 
-  `properties.labels.spark_exec_id` bigint, 
-  `properties.labels.spark_exec_resourceprofile_id` bigint, 
+  `emr_eks_subscription_id` string, 
   `properties.labels.spark_role` string, 
-  `properties.labels.spark_version` string, 
-  `properties.labels.team` string, 
-  `properties.labels.topology_kubernetes_io_region` string, 
-  `properties.labels.topology_kubernetes_io_zone` string, 
-  `window.start` string, 
-  `window.end` string, 
-  `rawallocationonly.cpucoreusagemax` double, 
-  `rawallocationonly.rambyteusagemax` double, 
-  `rawallocationonly` string, 
-  `properties.controller` string, 
-  `properties.controllerkind` string)
+  `spark_version` string, 
+  `capacity_type` string, 
+  `pod_name` string, 
+  `job_id` string, 
+  `vc_id` string)
 ROW FORMAT DELIMITED 
   FIELDS TERMINATED BY ',' 
 STORED AS INPUTFORMAT 
@@ -79,10 +61,14 @@ OUTPUTFORMAT
   'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
 LOCATION
   's3://cost-data-REGION-ACCOUNT_ID/compute_cost/'
-TBLPROPERTIES ( 
-  'areColumnsQuoted'='false', 
+TBLPROPERTIES (
+  'CrawlerSchemaDeserializerVersion'='1.0', 
+  'CrawlerSchemaSerializerVersion'='1.0', 
+  'UPDATED_BY_CRAWLER'='ComputeCostCrawler', 
+  'areColumnsQuoted'='false',
   'classification'='csv', 
   'columnsOrdered'='true', 
   'compressionType'='none', 
-  'delimiter'=',',
-  'skip.header.line.count'='1')
+  'delimiter'=',', 
+  'skip.header.line.count'='1', 
+  'typeOfData'='file')
