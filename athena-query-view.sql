@@ -16,8 +16,8 @@ UNION
 
 SELECT 
     job_id,
-    vc_id, 
-    sum(totalCost) as cost,
+    vc_id,
+    sum(cast(totalcost as decimal(13,5))) as cost,
     'compute' as category
 FROM "athenacurcfn_c_u_r"."compute_cost"
 group by job_id, vc_id;
