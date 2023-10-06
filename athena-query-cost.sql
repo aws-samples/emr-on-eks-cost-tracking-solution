@@ -10,4 +10,4 @@ FROM "athenacurcfn_c_u_r"."emr_eks_cost"
 
 WHERE job_id = '000000031p3s4hj6js9'
 
-GROUP BY job_id;
+GROUP BY job_id, vc_id;
