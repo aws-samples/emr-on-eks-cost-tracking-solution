@@ -23,6 +23,10 @@ spec:
           - name: emr-eks-cost-exporter
             image: ECR_IMAGE
             imagePullPolicy: Always
+            securityContext:
+              runAsUser: 10001
+              runAsNonRoot: true
+              allowPrivilegeEscalation: false
             env:
             - name: S3_BUCKET_NAME
               value: CUR_BUCKET
