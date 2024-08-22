@@ -34,7 +34,7 @@ def export_to_s3(file_name):
     #Initialize the s3 client, SDK will use IRSA credentials by default
     s3 = boto3.client('s3')
 
-    logger.info("upload to s3")
+    logger.info(f"upload to s3 {file_name}")
 
     s3.upload_file(file_name, s3_bucket_name, f"{s3_prefix}/{file_name}")
 
@@ -49,9 +49,8 @@ desired_columns = [
     "pvBytes", "pvByteHours", "pvCost", "pvs", "pvCostAdjustment", "ramBytes",
     "ramByteRequestAverage", "ramByteUsageAverage", "ramByteHours", "ramCost",
     "ramCostAdjustment", "ramEfficiency", "externalCost", "sharedCost",
-    "totalCost", "totalEfficiency", "properties.cluster",
-    "properties.container", "properties.namespace",
-    "instance_id", "properties.labels.emr_containers_amazonaws_com_component",
+    "totalCost", "totalEfficiency", "properties.cluster","properties.container",
+    "properties.namespace","instance_id", "properties.labels.emr_containers_amazonaws_com_component",
     "emr_eks_subscription_id", "properties.labels.spark_role",
     "spark_version", "capacity_type", "pod_name", "job_id", "vc_id"]
 
@@ -106,27 +105,28 @@ def main():
     if (cleaned_allocation_data is not None):
 
         df_job_api_method = cleaned_allocation_data.join(cleaned_asset_data.set_index('instance_id'), on='instance_id', validate='m:1')     
-        df_job_api_method['emr_eks_subscription_id'] = np.NaN
+        df_job_api_method['emr_eks_subscription_id'] = np.nan
         cost_df = pd.concat([cost_df, df_job_api_method[desired_columns]], ignore_index=True)
 
     if (cleaned_allocation_data_operator is not None):
 
         df_job_other_methods = cleaned_allocation_data_operator.join(cleaned_asset_data.set_index('instance_id'), on='instance_id', validate='m:1')
-        df_job_other_methods[['job_id', 'vc_id']] = np.NaN
+        df_job_other_methods[['job_id', 'vc_id']] = np.nan
 
         cost_df = pd.concat([cost_df, df_job_other_methods[desired_columns]], ignore_index=True)
 
-    
 
+    if (not cost_df.empty):
+        #generate filename
+        file_name = uuid.uuid1()
 
-    #generate filename
-    file_name = uuid.uuid1()
-
-    #write to local file
-    cost_df.to_csv(f"{file_name}.csv", index=False)
-    
-    #upload to S3
-    export_to_s3(file_name=f"{file_name}.csv")
+        #write to local file
+        cost_df.to_csv(f"{file_name}.csv", index=False)
+        
+        #upload to S3
+        export_to_s3(file_name=f"{file_name}.csv")
+    else:
+       logger.info('No data found from kubecost')     
 
 if __name__ == "__main__":
     main()
