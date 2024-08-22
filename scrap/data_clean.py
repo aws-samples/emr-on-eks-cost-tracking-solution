@@ -6,8 +6,8 @@ import json
 import os
 
 required_columns = ['properties.container', 'properties.labels.emr_containers_amazonaws_com_component',
-                    'properties.labels.node_kubernetes_io_instance_type', 'properties.labels.spark_role',
-                    'spark_version']
+                    'properties.labels.spark_role','spark_version']
+
 
 def clean_allocation_data(kubecost_allocation_data, logger):
 
@@ -72,7 +72,18 @@ def clean_allocation_data_operator(kubecost_allocation_data, logger):
 
     #Flatten the json
     df = pd.json_normalize(df)
-    df = df.drop(columns=['properties.labels.node_kubernetes_io_instance_type'])
+    operator_missing_columns = [col for col in required_columns if col not in df.columns]
+    if operator_missing_columns:
+        for col in operator_missing_columns:
+            df[col] = None
+
+    # if ('properties.labels.node_kubernetes_io_instance_type' in df.columns):
+    #     df = df.drop(columns=['properties.labels.node_kubernetes_io_instance_type'])
+    # else:
+    #     logger.info('node_kubernetes_io_instance_type column dose not exist')
+    # if 'properties.labels.emr_containers_amazonaws_com_component' not in df.columns:
+    #    df['properties.labels.emr_containers_amazonaws_com_component'] = np.nan
+    #    df['properties.labels.spark_role'] = np.nan
 
     if ('properties.labels.eks_subscription_amazonaws_com_emr_internal_id' in df.columns and 'properties.labels.emr_containers_amazonaws_com_resource_type' not in df.columns):
         logger.info('Dropping jobs with spark-submit or start job run, emr_internal_id not supported for these modes by the solution')
@@ -90,15 +101,11 @@ def clean_allocation_data_operator(kubecost_allocation_data, logger):
     # we want to make sure to create the spark version column
     # as it is not present in the operator as a label
     if 'properties.labels.spark_version' not in df.columns:
-        df['spark_version'] = np.NaN
-        df['properties.labels.spark_role'] = np.NaN
-
-    if 'properties.labels.spark_version' in df.columns:
+        df['spark_version'] = np.nan
+    else:
         df['spark_version'] = df['properties.labels.spark_version']
 
-
     df = df.rename(columns={'properties.providerID': 'instance_id'})
-
     df = df.drop(columns=['name'])
 
     return df
@@ -157,9 +164,9 @@ def clean_asset_data (asset_data):
         df = pd.concat([df_karpenter, df_mng])
 
     #select only two columns that are of interest
-    df = df[['properties.providerID','capacity_type', 'nodeType']]
+    df = df[['properties.providerID','capacity_type']]
 
-    df = df.rename(columns={'nodeType': 'instace_type'})
+    # df = df.rename(columns={'properties.labels.node_kubernetes_io_instance_type': 'instace_type'})
 
     #unify how spot and on-demand are written, this is due to differences
     #between karpenter and managed nodegroup
