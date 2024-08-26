@@ -10,7 +10,7 @@ First execute `deploy-emr-eks-cost-tracking.sh` the script expect the following 
 
 Example
 
-`sh deploy-emr-eks-cost-tracking.sh eu-west-1 1.102.0 emreks 111111111`
+`sh deploy-emr-eks-cost-tracking.sh us-west-2 2.3.3 emreks 111111111`
 
 ## What is deployed
 

@@ -65,13 +65,13 @@ def main():
 
     # #get asset data, these are ec2 instances
     asset_data = execute_kubecost_assets_api(kube_cost_endpoint, start, end, logger=logger)
-    
+
     if(asset_data is None):
         logger.info ("No asset and EMR on EKS data found existing")
         sys.exit()
     
     # #clean the data, get only columns needed and rename column for capacity type
-    cleaned_asset_data = data_clean.clean_asset_data(asset_data)
+    cleaned_asset_data = data_clean.clean_asset_data(asset_data, logger=logger)
     cleaned_asset_data = cleaned_asset_data.rename(columns={'properties.providerID': 'instance_id'})
 
     aggregate_api_method = "pod,label:emr-containers.amazonaws.com/job.id,label:emr-containers.amazonaws.com/virtual-cluster-id"
@@ -89,6 +89,7 @@ def main():
                                                                 "1h", aggregate_other_method, logger=logger)
     
     if kubecost_allocation_data_operator is None and kubecost_allocation_data is None:
+        logger.info('No EMR on EKS data found, exiting')
         sys.exit()
 
     cleaned_allocation_data = data_clean.clean_allocation_data(kubecost_allocation_data, logger=logger)

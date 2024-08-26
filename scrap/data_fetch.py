@@ -28,10 +28,10 @@ def execute_kubecost_allocation_api(kubecost_api_endpoint, start, end, granulari
     try:       
         params = {"window": window, "aggregate": aggregate, "accumulate": accumulate, "step": step}
 
-        r = requests.get(f"{kubecost_api_endpoint}/model/allocation", params=params, timeout=30)
+        r = requests.get(f"{kubecost_api_endpoint}/model/allocation/compute", params=params, timeout=30)
 
         if not list(filter(None, r.json()["data"])):
-            logger.info("No data found")
+            logger.info("No allocation data found in kubecost")
             return None
 
         return r.json()["data"]
@@ -56,7 +56,7 @@ def execute_kubecost_assets_api(kubecost_api_endpoint, start, end, logger):
 
     # Executing Kubecost Allocation API call (On-demand query)
     logger.info(f"Querying Kubecost Assets API for data between {start} and {end}")
-    params = {"window": window, "accumulate": accumulate, "filterCategories": "Compute", "filterTypes": "Node"}
+    params = {"window": window, "accumulate": accumulate, "filterCategories": "compute", "filterTypes": "Node"}
     
     try:
         r = requests.get(f"{kubecost_api_endpoint}/model/assets", params=params, timeout=120)

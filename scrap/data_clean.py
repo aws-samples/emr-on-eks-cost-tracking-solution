@@ -43,7 +43,7 @@ def clean_allocation_data(kubecost_allocation_data, logger):
     df = df.drop(columns=['name'])
 
     missing_columns = [col for col in required_columns if col not in df.columns]
-
+  
     if missing_columns:
         for col in missing_columns:
             df[col] = None
@@ -111,7 +111,7 @@ def clean_allocation_data_operator(kubecost_allocation_data, logger):
     return df
     
 
-def clean_asset_data (asset_data):
+def clean_asset_data (asset_data, logger):
 
     #List all the keys from the data object return by kubecost
     list_keys = list(set(chain.from_iterable(sub.keys() for sub in asset_data)))
@@ -135,7 +135,7 @@ def clean_asset_data (asset_data):
     #we also need to make sure the CA label for capacity type exist
     df_mng = pd.DataFrame()
 
-    cluster_autoscaler_label = 'labels.label_eks_amazonaws_com_capacityType'
+    cluster_autoscaler_label = 'labels.eks_amazonaws_com_capacityType'
 
     if cluster_autoscaler_label in df_columns_list:
         df_mng = df.dropna(subset=[cluster_autoscaler_label])
@@ -143,7 +143,7 @@ def clean_asset_data (asset_data):
     
     df_karpenter = pd.DataFrame()
 
-    karpenter_label = 'labels.label_karpenter_sh_capacity_type'
+    karpenter_label = 'labels.karpenter_sh_capacity_type'
 
     #get the instances created by karpenter
     #we also need to make sure the karpenter label for capacity type exist
@@ -153,8 +153,8 @@ def clean_asset_data (asset_data):
 
     #check if there is data in dfs and
     # concatenate all the dfs into a single one
-
     if df_karpenter.empty and df_mng.empty:
+        logger.info(f'karpenter and managed node groups are both empty')
         sys.exit()
     elif df_karpenter.empty:
         df = df_mng
