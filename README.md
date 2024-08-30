@@ -4,7 +4,11 @@ This repository contains a series of automation to help in the deployment of a c
 
 ## Deploy
 
-First execute `deploy-emr-eks-cost-tracking.sh` the script expect the following in this order: region, kubecost version, eks cluster name, and account id.
+First login to the public ECR (replace the region name):
+
+`aws ecr-public get-login-password --region REGION_NAME | docker login --username AWS --password-stdin public.ecr.aws`
+
+Then execute `deploy-emr-eks-cost-tracking.sh` the script expect the following in this order: region, kubecost version, eks cluster name, and account id.
 
 `sh deploy-emr-eks-cost-tracking.sh REGION KUBECOST-VERSION EKS-CLUSTER-NAME ACCOUNT-ID`
 
