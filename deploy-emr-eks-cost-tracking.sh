@@ -96,6 +96,13 @@ kubecostProductConfigs:
   projectID: "$4"
   clusterName: $3
 
+persistentVolume:
+  storageClass: gp2   
+prometheus:
+  server:
+    persistentVolume:
+      storageClass: gp2
+
 EOF
 
 echo "Deploying Kubecost"
